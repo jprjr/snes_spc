@@ -1,0 +1,5 @@
+*.o
+demo/play_spc
+demo/benchmark
+demo/save_state
+demo/trim_spc
