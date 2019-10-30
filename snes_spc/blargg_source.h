@@ -43,23 +43,6 @@ static inline void blargg_dprintf_( const char*, ... ) { }
 #undef CHECK_ALLOC
 #define CHECK_ALLOC( ptr ) do { if ( (ptr) == 0 ) return "Out of memory"; } while ( 0 )
 
-// Avoid any macros which evaluate their arguments multiple times
-#undef min
-#undef max
-
-#define DEF_MIN_MAX( type ) \
-	static inline type min( type x, type y ) { if ( x < y ) return x; return y; }\
-	static inline type max( type x, type y ) { if ( y < x ) return x; return y; }
-
-DEF_MIN_MAX( int )
-DEF_MIN_MAX( unsigned )
-DEF_MIN_MAX( long )
-DEF_MIN_MAX( unsigned long )
-DEF_MIN_MAX( float )
-DEF_MIN_MAX( double )
-
-#undef DEF_MIN_MAX
-
 /*
 // using const references generates crappy code, and I am currenly only using these
 // for built-in types, so they take arguments by value
