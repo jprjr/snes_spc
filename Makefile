@@ -3,7 +3,7 @@
 CFLAGS = -I. -Wall -Wextra
 CXXFLAGS = -I. -Wall -Wextra
 
-all: demo/play_spc demo/benchmark demo/trim_spc demo/save_state
+all: demo/play_spc demo/benchmark demo/trim_spc demo/save_state snes_spc/spc.a
 
 SPC_OBJS = \
   snes_spc/spc.o \
@@ -47,6 +47,9 @@ demo/trim_spc: $(TRIM_OBJS)
 
 demo/save_state: $(SAVE_OBJS)
 	$(CXX) -o $@ $^
+
+snes_spc/spc.a: $(SPC_OBJS)
+	$(AR) rcs $@ $^
 
 clean:
 	rm -f demo/play_spc demo/benchmark demo/trim_spc demo/save_state $(PLAY_OBJS) $(BENCHMARK_OBJS) $(TRIM_OBJS) $(SAVE_OBJS)

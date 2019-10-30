@@ -1,4 +1,5 @@
 *.o
+*.a
 demo/play_spc
 demo/benchmark
 demo/save_state
