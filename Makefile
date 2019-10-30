@@ -1,9 +1,9 @@
 .PHONY: all clean
 
-CFLAGS = -I. -Wall -Wextra -Werror
-CXXFLAGS = -I. -Wall -Wextra -Werror
+CFLAGS = -I. -fPIC -Wall -Wextra -Werror
+CXXFLAGS = -I. -fPIC -fno-exceptions -fno-rtti -Wall -Wextra -Werror
 
-all: demo/play_spc demo/benchmark demo/trim_spc demo/save_state snes_spc/spc.a
+all: demo/play_spc demo/benchmark demo/trim_spc demo/save_state snes_spc/spc.a snes_spc/spc.so
 
 SPC_OBJS = \
   snes_spc/spc.o \
@@ -37,19 +37,22 @@ PLAY_OBJS = \
   $(SPC_OBJS)
 
 demo/play_spc: $(PLAY_OBJS)
-	$(CXX) -o $@ $^
+	$(CC) -o $@ $^
 
 demo/benchmark: $(BENCHMARK_OBJS)
-	$(CXX) -o $@ $^
+	$(CC) -o $@ $^
 
 demo/trim_spc: $(TRIM_OBJS)
-	$(CXX) -o $@ $^
+	$(CC) -o $@ $^
 
 demo/save_state: $(SAVE_OBJS)
-	$(CXX) -o $@ $^
+	$(CC) -o $@ $^
 
 snes_spc/spc.a: $(SPC_OBJS)
 	$(AR) rcs $@ $^
 
+snes_spc/spc.so: $(SPC_OBJS)
+	$(CC) -shared -o $@ $^
+
 clean:
-	rm -f demo/play_spc demo/benchmark demo/trim_spc demo/save_state $(PLAY_OBJS) $(BENCHMARK_OBJS) $(TRIM_OBJS) $(SAVE_OBJS)
+	rm -f demo/play_spc demo/benchmark demo/trim_spc demo/save_state $(PLAY_OBJS) $(BENCHMARK_OBJS) $(TRIM_OBJS) $(SAVE_OBJS) snes_spc/spc.a snes_spc/spc.so
