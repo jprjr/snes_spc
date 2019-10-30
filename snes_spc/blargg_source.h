@@ -30,7 +30,7 @@ static inline void blargg_dprintf_( const char*, ... ) { }
 // and line. Meant for finding situations that should be examined further, but that
 // don't indicate a problem. In all cases, execution continues normally.
 #undef check
-#define check( expr ) ((void) 0)
+#define check( expr ) ((expr) ? (void) 0 : dprintf("%s:%d",__FILE__,__LINE__))
 
 // If expr yields error string, return it from current function, otherwise continue.
 #undef RETURN_ERR

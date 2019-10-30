@@ -226,7 +226,9 @@ private:
 	int cpu_read           ( int addr, rel_time_t );
 	unsigned CPU_mem_bit   ( uint8_t const* pc, rel_time_t );
 	
+#ifndef NDEBUG
 	bool check_echo_access ( int addr );
+#endif
 	uint8_t* run_until_( time_t end_time );
 	
 	struct spc_file_t

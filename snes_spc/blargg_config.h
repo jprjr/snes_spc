@@ -5,7 +5,7 @@
 // snes_spc 0.9.0
 
 // Uncomment to disable debugging checks
-//#define NDEBUG 1
+#define NDEBUG 1
 
 // Uncomment to enable platform-specific (and possibly non-portable) optimizations
 //#define BLARGG_NONPORTABLE 1

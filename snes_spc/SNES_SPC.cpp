@@ -528,7 +528,9 @@ BOOST::uint8_t* SNES_SPC::run_until_( time_t end_time )\
 	return &REGS [r_cpuio0];\
 }
 
-int const cpu_lag_max = 12 - 1; // DIV YA,X takes 12 clocks
+#ifndef NDEBUG
+static const int cpu_lag_max = 12 - 1; // DIV YA,X takes 12 clocks
+#endif
 
 void SNES_SPC::end_frame( time_t end_time )
 {
