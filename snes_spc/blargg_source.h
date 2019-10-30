@@ -1,11 +1,11 @@
+#ifndef BLARGG_SOURCE_H
+#define BLARGG_SOURCE_H
 /* Included at the beginning of library source files, after all other #include lines.
 Sets up helpful macros and services used in my source code. They don't need
 module an annoying module prefix on their names since they are defined after
 all other #include lines. */
 
 // snes_spc 0.9.0
-#ifndef BLARGG_SOURCE_H
-#define BLARGG_SOURCE_H
 
 // If debugging is enabled, abort program if expr is false. Meant for checking
 // internal state and consistency. A failed assertion indicates a bug in the module.

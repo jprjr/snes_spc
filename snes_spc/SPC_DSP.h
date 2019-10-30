@@ -1,8 +1,8 @@
-// Highly accurate SNES SPC-700 DSP emulator
-
-// snes_spc 0.9.0
 #ifndef SPC_DSP_H
 #define SPC_DSP_H
+
+// Highly accurate SNES SPC-700 DSP emulator
+// snes_spc 0.9.0
 
 #include "blargg_common.h"
 

@@ -1,8 +1,8 @@
+#ifndef BLARGG_CONFIG_H
+#define BLARGG_CONFIG_H
 // snes_spc 0.9.0 user configuration file. Don't replace when updating library.
 
 // snes_spc 0.9.0
-#ifndef BLARGG_CONFIG_H
-#define BLARGG_CONFIG_H
 
 // Uncomment to disable debugging checks
 //#define NDEBUG 1

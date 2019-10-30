@@ -1,8 +1,8 @@
-// SNES SPC-700 APU emulator
-
-// snes_spc 0.9.0
 #ifndef SNES_SPC_H
 #define SNES_SPC_H
+
+// SNES SPC-700 APU emulator
+// snes_spc 0.9.0
 
 #include "SPC_DSP.h"
 #include "blargg_endian.h"

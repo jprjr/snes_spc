@@ -1,9 +1,9 @@
+#ifndef BLARGG_COMMON_H
+#define BLARGG_COMMON_H
 // Sets up common environment for Shay Green's libraries.
 // To change configuration options, modify blargg_config.h, not this file.
 
 // snes_spc 0.9.0
-#ifndef BLARGG_COMMON_H
-#define BLARGG_COMMON_H
 
 #include <stddef.h>
 #include <stdlib.h>
