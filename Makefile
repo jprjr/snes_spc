@@ -1,7 +1,7 @@
 .PHONY: all clean
 
-CFLAGS = -I. -Wall -Wextra
-CXXFLAGS = -I. -Wall -Wextra
+CFLAGS = -I. -Wall -Wextra -Werror
+CXXFLAGS = -I. -Wall -Wextra -Werror
 
 all: demo/play_spc demo/benchmark demo/trim_spc demo/save_state snes_spc/spc.a
 

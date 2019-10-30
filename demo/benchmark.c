@@ -17,7 +17,7 @@ int main( int argc, char** argv )
 	/* Load SPC */
 	long spc_size;
 	void* spc = load_file( (argc > 1) ? argv [1] : "test.spc", &spc_size );
-	SNES_SPC* snes_spc = spc_new();
+	snes_spc_t* snes_spc = spc_new();
 	if ( !snes_spc ) error( "Out of memory" );
 	spc_load_spc( snes_spc, spc, spc_size );
 	free( spc );

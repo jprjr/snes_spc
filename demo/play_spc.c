@@ -11,8 +11,8 @@ Usage: play_spc [test.spc]
 int main( int argc, char** argv )
 {
 	/* Create emulator and filter */
-	SNES_SPC* snes_spc = spc_new();
-	SPC_Filter* filter = spc_filter_new();
+	snes_spc_t* snes_spc = spc_new();
+	spc_filter_t* filter = spc_filter_new();
 	if ( !snes_spc || !filter ) error( "Out of memory" );
 	
 	/* Load SPC */

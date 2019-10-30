@@ -11,7 +11,7 @@ Usage: save_state [test.spc]
 #include "wave_writer.h"
 #include "demo_util.h" /* error(), load_file() */
 
-static SNES_SPC* snes_spc;
+static snes_spc_t* snes_spc;
 
 void record_wav( const char* path, int secs )
 {
