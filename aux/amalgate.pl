@@ -10,6 +10,10 @@ sub slurpfile {
     my $filename = shift;
     open(my $fh, '<', $filename) or die "File $filename: $!";
     my @lines = <$fh>;
+    foreach my $i (0..$#lines) {
+        $lines[$i] =~ s/\n$//;
+        $lines[$i] =~ s/\r$//;
+    }
     close($fh);
     return @lines;
 }
@@ -22,10 +26,8 @@ sub processfile {
     # check of ifndef-guard
     my ($def1) = ( $lines[0] =~ /^#ifndef\s+(.+)$/);
     if(defined($def1)) {
-        chomp($def1);
         my ($def2) = ( $lines[1] =~ m/^#define\s+(.+)$/);
         if(defined($def2)) {
-            chomp($def2);
 
             if($def1 eq $def2) {
                 if(exists($defines->{$def1})) {
@@ -50,7 +52,7 @@ sub processline {
     my $line = shift;
 
     if($line !~ /^#include\s+"/) {
-        return $line;
+        return $line . "\n";
     }
 
     my ($volume, $dir, $file) = File::Spec->splitpath($filename);
@@ -70,8 +72,19 @@ if(@ARGV < 1) {
 my $output = "namespace {\n";
 
 foreach my $file (@ARGV) {
+  my $comment_out = 0;
+  if($file =~ m/^c:/) {
+      $file =~ s/^c://;
+      $comment_out = 1;
+  }
   my @lines = slurpfile($file);
-  $output .= processfile($file,@lines);
+  if($comment_out) {
+      $output .= "/*\n";
+      $output .= join("\n",@lines);
+      $output .= "*/\n";
+  } else {
+      $output .= processfile($file,@lines);
+  }
 }
 
 $output .= "}\n";

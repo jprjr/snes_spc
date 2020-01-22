@@ -55,7 +55,7 @@ demo/save_state: $(SAVE_OBJS) $(UTIL_OBJS) $(WAVE_OBJS) $(SPC_C_A)
 
 amal/spc.cpp: $(SPC_C_SRCS)
 	mkdir -p amal
-	perl aux/amalgate.pl $(SPC_C_SRCS) > $@
+	perl aux/amalgate.pl "c:license.txt" $(SPC_C_SRCS) > $@
 
 $(SPC_C_A): amal/spc.o
 	$(AR) rcs $@ $^
