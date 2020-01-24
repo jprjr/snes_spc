@@ -78,7 +78,7 @@ $(SPC_SO): $(SPC_CPP_OBJS)
 	$(CXX) -shared -o $@ $^
 
 clean:
-	rm -f demo/play_spc demo/benchmark demo/trim_spc demo/save_state $(UTIL_OBJS) $(WAVE_OBJS) $(PLAY_OBJS) $(BENCHMARK_OBJS) $(TRIM_OBJS) $(SAVE_OBJS) $(SPC_A) $(SPC_SO) amal/spc.cpp amal/*.o
+	rm -f demo/play_spc demo/benchmark demo/trim_spc demo/save_state $(UTIL_OBJS) $(WAVE_OBJS) $(PLAY_OBJS) $(BENCHMARK_OBJS) $(TRIM_OBJS) $(SAVE_OBJS) $(SPC_CPP_OBJS) $(SPC_A) $(SPC_SO) amal/spc.cpp amal/*.o
 
 install: $(SPC_A) $(SPC_SO)
 	install -d $(LIBDIR)/
