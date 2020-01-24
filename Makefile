@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean install
 
 CFLAGS = -I. -fPIC -Wall -Wextra -Werror
 CXXFLAGS = -I. -fPIC -fno-exceptions -fno-rtti -Wall -Wextra -Werror
@@ -8,8 +8,13 @@ DYNLIB_PREFIX=lib
 STATIC_EXT=.a
 DYNLIB_EXT=.so
 
-SPC_A = snes_spc/$(STATIC_PREFIX)spc$(STATIC_EXT)
-SPC_SO = snes_spc/$(DYNLIB_PREFIX)spc$(DYNLIB_EXT)
+SPC_A = $(STATIC_PREFIX)spc$(STATIC_EXT)
+SPC_SO = $(DYNLIB_PREFIX)spc$(DYNLIB_EXT)
+
+DESTDIR=
+PREFIX=/usr/local
+LIBDIR=$(DESTDIR)$(PREFIX)/lib
+INCDIR=$(DESTDIR)$(PREFIX)/include/snes_spc
 
 all: demo/play_spc demo/benchmark demo/trim_spc demo/save_state $(SPC_A) $(SPC_SO)
 
@@ -30,6 +35,18 @@ SPC_CPP_OBJS = \
   snes_spc/SPC_DSP.o \
   snes_spc/spc.o \
   snes_spc/dsp.o
+
+SPC_HEADERS = \
+  snes_spc/SNES_SPC.h \
+  snes_spc/SPC_CPU.h \
+  snes_spc/SPC_DSP.h \
+  snes_spc/SPC_Filter.h \
+  snes_spc/blargg_common.h \
+  snes_spc/blargg_config.h \
+  snes_spc/blargg_endian.h \
+  snes_spc/blargg_source.h \
+  snes_spc/dsp.h \
+  snes_spc/spc.h
 
 UTIL_OBJS = demo/demo_util.o
 WAVE_OBJS = demo/wave_writer.o
@@ -62,3 +79,11 @@ $(SPC_SO): $(SPC_CPP_OBJS)
 
 clean:
 	rm -f demo/play_spc demo/benchmark demo/trim_spc demo/save_state $(UTIL_OBJS) $(WAVE_OBJS) $(PLAY_OBJS) $(BENCHMARK_OBJS) $(TRIM_OBJS) $(SAVE_OBJS) $(SPC_A) $(SPC_SO) amal/spc.cpp amal/*.o
+
+install: $(SPC_A) $(SPC_SO)
+	install -d $(LIBDIR)/
+	install -m 644 $(SPC_A) $(LIBDIR)/$(SPC_A)
+	install -m 755 $(SPC_SO) $(LIBDIR)/$(SPC_SO)
+	install -d $(INCDIR)/
+	install -m 644 $(SPC_HEADERS) $(INCDIR)/
+
