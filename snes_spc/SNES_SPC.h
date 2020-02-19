@@ -1,16 +1,16 @@
+// SNES SPC-700 APU emulator
+
+// Game_Music_Emu https://bitbucket.org/mpyne/game-music-emu/
 #ifndef SNES_SPC_H
 #define SNES_SPC_H
-
-// SNES SPC-700 APU emulator
-// snes_spc 0.9.0
 
 #include "SPC_DSP.h"
 #include "blargg_endian.h"
 
+#include <stdint.h>
+
 struct SNES_SPC {
 public:
-	typedef BOOST::uint8_t uint8_t;
-	
 	// Must be called once before using
 	blargg_err_t init();
 	
@@ -105,9 +105,23 @@ public:
 #endif
 
 public:
-	BLARGG_DISABLE_NOTHROW
+	// TODO: document
+	struct regs_t
+	{
+		uint16_t pc;
+		uint8_t  a;
+		uint8_t  x;
+		uint8_t  y;
+		uint8_t  psw;
+		uint8_t  sp;
+	};
+	regs_t& smp_regs() { return m.cpu_regs; }
 	
-	typedef BOOST::uint16_t uint16_t;
+	uint8_t* smp_ram() { return m.ram.ram; }
+	
+	void run_until( time_t t ) { run_until_( t ); }
+public:
+	BLARGG_DISABLE_NOTHROW
 	
 	// Time relative to m_spc_time. Speeds up code a bit by eliminating need to
 	// constantly add m_spc_time to time from CPU. CPU uses time that ends at
@@ -143,15 +157,7 @@ private:
 		
 		uint8_t smp_regs [2] [reg_count];
 		
-		struct
-		{
-			int pc;
-			int a;
-			int x;
-			int y;
-			int psw;
-			int sp;
-		} cpu_regs;
+		regs_t cpu_regs;
 		
 		rel_time_t  dsp_time;
 		time_t      spc_time;
@@ -176,13 +182,11 @@ private:
 		
 		struct
 		{
-			// padding to neutralize address overflow
-			union {
-				uint8_t padding1 [0x100];
-				uint16_t align; // makes compiler align data for 16-bit access
-			} padding1 [1];
-			uint8_t ram      [0x10000];
-			uint8_t padding2 [0x100];
+			// padding to neutralize address overflow -- but this is
+			// still undefined behavior! TODO: remove and instead properly
+			// guard usage of emulated memory
+			uint8_t padding1 [0x100];
+			alignas(uint16_t) uint8_t ram      [0x10000 + 0x100];
 		} ram;
 	};
 	state_t m;
@@ -218,17 +222,15 @@ private:
 	Timer* run_timer       ( Timer* t, rel_time_t );
 	int dsp_read           ( rel_time_t );
 	void dsp_write         ( int data, rel_time_t );
-	void cpu_write_smp_reg_( int data, rel_time_t, int addr );
-	void cpu_write_smp_reg ( int data, rel_time_t, int addr );
-	void cpu_write_high    ( int data, int i, rel_time_t );
-	void cpu_write         ( int data, int addr, rel_time_t );
+	void cpu_write_smp_reg_( int data, rel_time_t, uint16_t addr );
+	void cpu_write_smp_reg ( int data, rel_time_t, uint16_t addr );
+	void cpu_write_high    ( int data, uint8_t i );
+	void cpu_write         ( int data, uint16_t addr, rel_time_t );
 	int cpu_read_smp_reg   ( int i, rel_time_t );
-	int cpu_read           ( int addr, rel_time_t );
-	unsigned CPU_mem_bit   ( uint8_t const* pc, rel_time_t );
+	int cpu_read           ( uint16_t addr, rel_time_t );
+	unsigned CPU_mem_bit   ( uint16_t pc, rel_time_t );
 	
-#ifndef NDEBUG
 	bool check_echo_access ( int addr );
-#endif
 	uint8_t* run_until_( time_t end_time );
 	
 	struct spc_file_t

@@ -1,9 +1,8 @@
-#ifndef BLARGG_COMMON_H
-#define BLARGG_COMMON_H
 // Sets up common environment for Shay Green's libraries.
 // To change configuration options, modify blargg_config.h, not this file.
 
-// snes_spc 0.9.0
+#ifndef BLARGG_COMMON_H
+#define BLARGG_COMMON_H
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -17,7 +16,7 @@
 #define BLARGG_COMMON_H
 
 // BLARGG_RESTRICT: equivalent to restrict, where supported
-#if defined (__GNUC__) || _MSC_VER >= 1100
+#if __GNUC__ >= 3 || _MSC_VER >= 1100
 	#define BLARGG_RESTRICT __restrict
 #else
 	#define BLARGG_RESTRICT
@@ -46,12 +45,10 @@ public:
 	T* end() const { return begin_ + size_; }
 	blargg_err_t resize( size_t n )
 	{
-		// TODO: blargg_common.cpp to hold this as an outline function, ugh
 		void* p = realloc( begin_, n * sizeof (T) );
-		if ( p )
-			begin_ = (T*) p;
-		else if ( n > size_ ) // realloc failure only a problem if expanding
+		if ( !p && n )
 			return "Out of memory";
+		begin_ = (T*) p;
 		size_ = n;
 		return 0;
 	}
@@ -65,7 +62,7 @@ public:
 
 #ifndef BLARGG_DISABLE_NOTHROW
 	// throw spec mandatory in ISO C++ if operator new can return NULL
-	#if __cplusplus >= 199711 || defined (__GNUC__)
+	#if __cplusplus >= 199711 || __GNUC__ >= 3
 		#define BLARGG_THROWS( spec ) throw spec
 	#else
 		#define BLARGG_THROWS( spec )
@@ -82,6 +79,9 @@ public:
 // BLARGG_4CHAR('a','b','c','d') = 'abcd' (four character integer constant)
 #define BLARGG_4CHAR( a, b, c, d ) \
 	((a&0xFF)*0x1000000L + (b&0xFF)*0x10000L + (c&0xFF)*0x100L + (d&0xFF))
+
+#define BLARGG_2CHAR( a, b ) \
+	((a&0xFF)*0x100L + (b&0xFF))
 
 // BOOST_STATIC_ASSERT( expr ): Generates compile error if expr is 0.
 #ifndef BOOST_STATIC_ASSERT
@@ -135,51 +135,25 @@ public:
 	typedef unsigned blargg_ulong;
 #endif
 
-// BOOST::int8_t etc.
+// int8_t etc.
 
-// HAVE_STDINT_H: If defined, use <stdint.h> for int8_t etc.
-#if defined (HAVE_STDINT_H)
+// TODO: Add CMake check for this, although I'd likely just point affected
+// persons to a real compiler...
+#if 1 || defined (HAVE_STDINT_H)
 	#include <stdint.h>
-	#define BOOST
+#endif
 
-// HAVE_INTTYPES_H: If defined, use <stdint.h> for int8_t etc.
-#elif defined (HAVE_INTTYPES_H)
-	#include <inttypes.h>
-	#define BOOST
-
+#if __GNUC__ >= 3
+	#define BLARGG_DEPRECATED __attribute__ ((deprecated))
 #else
-	struct BOOST
-	{
-		#if UCHAR_MAX == 0xFF && SCHAR_MAX == 0x7F
-			typedef signed char     int8_t;
-			typedef unsigned char   uint8_t;
-		#else
-			// No suitable 8-bit type available
-			typedef struct see_blargg_common_h int8_t;
-			typedef struct see_blargg_common_h uint8_t;
-		#endif
-		
-		#if USHRT_MAX == 0xFFFF
-			typedef short           int16_t;
-			typedef unsigned short  uint16_t;
-		#else
-			// No suitable 16-bit type available
-			typedef struct see_blargg_common_h int16_t;
-			typedef struct see_blargg_common_h uint16_t;
-		#endif
-		
-		#if ULONG_MAX == 0xFFFFFFFF
-			typedef long            int32_t;
-			typedef unsigned long   uint32_t;
-		#elif UINT_MAX == 0xFFFFFFFF
-			typedef int             int32_t;
-			typedef unsigned int    uint32_t;
-		#else
-			// No suitable 32-bit type available
-			typedef struct see_blargg_common_h int32_t;
-			typedef struct see_blargg_common_h uint32_t;
-		#endif
-	};
+	#define BLARGG_DEPRECATED
+#endif
+
+// Use in place of "= 0;" for a pure virtual, since these cause calls to std C++ lib.
+// During development, BLARGG_PURE( x ) expands to = 0;
+// virtual int func() BLARGG_PURE( { return 0; } )
+#ifndef BLARGG_PURE
+	#define BLARGG_PURE( def ) def
 #endif
 
 #endif

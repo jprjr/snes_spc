@@ -1,8 +1,8 @@
+// Simple low-pass and high-pass filter to better match sound output of a SNES
+
+// Game_Music_Emu https://bitbucket.org/mpyne/game-music-emu/
 #ifndef SPC_FILTER_H
 #define SPC_FILTER_H
-
-// Simple low-pass and high-pass filter to better match sound output of a SNES
-// snes_spc 0.9.0
 
 #include "blargg_common.h"
 
@@ -17,12 +17,15 @@ public:
 
 	// Clears filter to silence
 	void clear();
-
+	
 	// Sets gain (volume), where gain_unit is normal. Gains greater than gain_unit
 	// are fine, since output is clamped to 16-bit sample range.
 	enum { gain_unit = 0x100 };
 	void set_gain( int gain );
-
+	
+	// Enables/disables filtering (when disabled, gain is still applied)
+	void enable( bool b );
+	
 	// Sets amount of bass (logarithmic scale)
 	enum { bass_none =  0 };
 	enum { bass_norm =  8 }; // normal amount
@@ -36,9 +39,12 @@ private:
 	enum { gain_bits = 8 };
 	int gain;
 	int bass;
+	bool enabled;
 	struct chan_t { int p1, pp1, sum; };
 	chan_t ch [2];
 };
+
+inline void SPC_Filter::enable( bool b )  { enabled = b; }
 
 inline void SPC_Filter::set_gain( int g ) { gain = g; }
 

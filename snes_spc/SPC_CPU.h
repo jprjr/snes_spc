@@ -1,4 +1,4 @@
-// snes_spc 0.9.0. http://www.slack.net/~ant/
+// Game_Music_Emu https://bitbucket.org/mpyne/game-music-emu/
 
 /* Copyright (C) 2004-2007 Shay Green. This module is free software; you
 can redistribute it and/or modify it under the terms of the GNU Lesser
@@ -16,7 +16,7 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA */
 #if SPC_MORE_ACCURACY
 	#define SUSPICIOUS_OPCODE( name ) ((void) 0)
 #else
-	#define SUSPICIOUS_OPCODE( name ) dprintf( "SPC: suspicious opcode: " name "\n" )
+	#define SUSPICIOUS_OPCODE( name ) debug_printf( "SPC: suspicious opcode: " name "\n" )
 #endif
 
 #define CPU_READ( time, offset, addr )\
@@ -66,62 +66,37 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA */
 #define READ_DP(  time, addr )              READ ( time, DP_ADDR( addr ) )
 #define WRITE_DP( time, addr, data )        WRITE( time, DP_ADDR( addr ), data )
 
-#define READ_PROG16( addr )                 GET_LE16( ram + (addr) )
+#define READ_PROG16( addr )                 (RAM [(addr) & 0xffff] | (RAM [((addr) + 1) & 0xffff] << 8))
 
-#define SET_PC( n )     (pc = ram + (n))
-#define GET_PC()        (pc - ram)
-#define READ_PC( pc )   (*(pc))
-#define READ_PC16( pc ) GET_LE16( pc )
+#define SET_PC( n )     (pc = n)
+#define GET_PC()        (pc)
+#define READ_PC( pc )   (ram [pc])
+#define READ_PC16( pc ) READ_PROG16( pc )
 
-// TODO: remove non-wrapping versions?
-#define SPC_NO_SP_WRAPAROUND 0
+#define SET_SP( v )     (sp = v)
+#define GET_SP()        ((uint8_t) (sp))
 
-#define SET_SP( v )     (sp = ram + 0x101 + (v))
-#define GET_SP()        (sp - 0x101 - ram)
-
-#if SPC_NO_SP_WRAPAROUND
-#define PUSH16( v )     (sp -= 2, SET_LE16( sp, v ))
-#define PUSH( v )       (void) (*--sp = (uint8_t) (v))
-#define POP( out )      (void) ((out) = *sp++)
-
-#else
 #define PUSH16( data )\
 {\
-	int addr = (sp -= 2) - ram;\
-	if ( addr > 0x100 )\
-	{\
-		SET_LE16( sp, data );\
-	}\
-	else\
-	{\
-		ram [(uint8_t) addr + 0x100] = (uint8_t) data;\
-		sp [1] = (uint8_t) (data >> 8);\
-		sp += 0x100;\
-	}\
+	PUSH( (data & 0xff00) >> 8 );\
+	PUSH( data & 0xff );\
 }
 
 #define PUSH( data )\
 {\
-	*--sp = (uint8_t) (data);\
-	if ( sp - ram == 0x100 )\
-		sp += 0x100;\
+	ram [0x100 + sp] = (uint8_t) (data);\
+	--sp;\
 }
 
 #define POP( out )\
 {\
-	out = *sp++;\
-	if ( sp - ram == 0x201 )\
-	{\
-		out = sp [-0x101];\
-		sp -= 0x100;\
-	}\
+	++sp;\
+	out = ram [0x100 + sp];\
 }
-
-#endif
 
 #define MEM_BIT( rel ) CPU_mem_bit( pc, rel_time + rel )
 
-unsigned SNES_SPC::CPU_mem_bit( uint8_t const* pc, rel_time_t rel_time )
+unsigned SNES_SPC::CPU_mem_bit( uint16_t pc, rel_time_t rel_time )
 {
 	unsigned addr = READ_PC16( pc );
 	unsigned t = READ( 0, addr & 0x1FFF ) >> (addr >> 13);
@@ -163,11 +138,11 @@ int const nz_neg_mask = 0x880; // either bit set indicates N flag set
 SPC_CPU_RUN_FUNC
 {
 	uint8_t* const ram = RAM;
-	int a = m.cpu_regs.a;
-	int x = m.cpu_regs.x;
-	int y = m.cpu_regs.y;
-	uint8_t const* pc;
-	uint8_t* sp;
+	uint8_t a = m.cpu_regs.a;
+	uint8_t x = m.cpu_regs.x;
+	uint8_t y = m.cpu_regs.y;
+	uint16_t pc;
+	uint8_t sp;
 	int psw;
 	int c;
 	int nz;
@@ -183,7 +158,7 @@ SPC_CPU_RUN_FUNC
 	// Main loop
 	
 cbranch_taken_loop:
-	pc += *(BOOST::int8_t const*) pc;
+	pc += (int8_t) ram [pc];
 inc_pc_loop:
 	pc++;
 loop:
@@ -195,7 +170,7 @@ loop:
 	check( (unsigned) x < 0x100 );
 	check( (unsigned) y < 0x100 );
 	
-	opcode = *pc;
+	opcode = ram [pc];
 	if ( (rel_time += m.cycle_table [opcode]) > 0 )
 		goto out_of_time;
 	
@@ -218,7 +193,8 @@ loop:
 	*/
 	
 	// TODO: if PC is at end of memory, this will get wrong operand (very obscure)
-	data = *++pc;
+	pc++;
+	data = ram [pc];
 	switch ( opcode )
 	{
 	
@@ -227,10 +203,10 @@ loop:
 #define BRANCH( cond )\
 {\
 	pc++;\
-	pc += (BOOST::int8_t) data;\
+	pc += (int8_t) data;\
 	if ( cond )\
 		goto loop;\
-	pc -= (BOOST::int8_t) data;\
+	pc -= (int8_t) data;\
 	rel_time -= 2;\
 	goto loop;\
 }
@@ -249,23 +225,12 @@ loop:
 	}
 	
 	case 0x6F:// RET
-		#if SPC_NO_SP_WRAPAROUND
 		{
-			SET_PC( GET_LE16( sp ) );
-			sp += 2;
+			uint8_t l, h;
+			POP( l );
+			POP( h );
+			SET_PC( l | (h << 8) );
 		}
-		#else
-		{
-			int addr = sp - ram;
-			SET_PC( GET_LE16( sp ) );
-			sp += 2;
-			if ( addr < 0x1FF )
-				goto loop;
-			
-			SET_PC( sp [-0x101] * 0x100 + ram [(uint8_t) addr + 0x100] );
-			sp -= 0x100;
-		}
-		#endif
 		goto loop;
 	
 	case 0xE4: // MOV a,dp
@@ -279,7 +244,7 @@ loop:
 		READ_DP_TIMER( -2, data, temp );
 		data = temp + no_read_before_write ;
 	}
-	/* fallthrough */
+	// fall through
 	case 0x8F:{// MOV dp,#imm
 		int temp = READ_PC( pc + 1 );
 		pc += 2;
@@ -294,8 +259,7 @@ loop:
 				REGS [i] = (uint8_t) data;
 				
 				// Registers other than $F2 and $F4-$F7
-				//if ( i != 2 && i != 4 && i != 5 && i != 6 && i != 7 )
-				if ( (int)(((~0x2F00u << (bits_in_int - 16)) << i)) < 0 ) // 12%
+				if ( i != 2 && (i < 4 || i > 7)) // 12%
 					cpu_write_smp_reg( data, rel_time, i );
 			}
 		}
@@ -328,8 +292,7 @@ loop:
 		#endif
 		goto loop;
 	
-#define CASE( n )   /* fallthrough */ \
-case n:
+#define CASE( n )   /*FALLTHRU*/case n:
 
 // Define common address modes based on opcode for immediate mode. Execution
 // ends with data set to the address of the operand.
@@ -348,23 +311,23 @@ case n:
 		data += y;\
 		goto abs_##op;\
 	CASE( op + 0x0D ) /* abs+X */\
-		data += x; \
+		data += x;/*FALLTHRU*/\
 	CASE( op - 0x03 ) /* abs */\
 	abs_##op:\
 		data += 0x100 * READ_PC( ++pc );\
 		goto end_##op;\
 	CASE( op + 0x0C ) /* dp+X */\
-		data = (uint8_t) (data + x);
+		data = (uint8_t) (data + x);/*FALLTHRU*/
 
 #define ADDR_MODES_NO_DP( op )\
 	ADDR_MODES_( op )\
-		data += dp; \
+		data += dp;\
 	end_##op:
 
 #define ADDR_MODES( op )\
 	ADDR_MODES_( op )\
 	CASE( op - 0x04 ) /* dp */\
-		data += dp; \
+		data += dp;\
 	end_##op:
 
 // 1. 8-bit Data Transmission Commands. Group I
@@ -386,8 +349,7 @@ case n:
 		goto inc_pc_loop;
 	
 	case 0xF9: // MOV X,dp+Y
-		data = (uint8_t) (data + y);
-        /* fallthrough */
+		data = (uint8_t) (data + y);/*FALLTHRU*/
 	case 0xF8: // MOV X,dp
 		READ_DP_TIMER( 0, data, x = nz );
 		goto inc_pc_loop;
@@ -395,16 +357,14 @@ case n:
 	case 0xE9: // MOV X,abs
 		data = READ_PC16( pc );
 		++pc;
-		data = READ( 0, data );
-        /* fallthrough */
+		data = READ( 0, data );/*FALLTHRU*/
 	case 0xCD: // MOV X,imm
 		x  = data;
 		nz = data;
 		goto inc_pc_loop;
 	
 	case 0xFB: // MOV Y,dp+X
-		data = (uint8_t) (data + x);
-        /* fallthrough */
+		data = (uint8_t) (data + x);/*FALLTHRU*/
 	case 0xEB: // MOV Y,dp
 		// 70% from timer
 		pc++;
@@ -437,7 +397,6 @@ case n:
 		goto mov_abs_temp;
 	case 0xC9: // MOV abs,X
 		temp = x;
-        /* fallthrough */
 	mov_abs_temp:
 		WRITE( 0, READ_PC16( pc ), temp );
 		pc += 2;
@@ -445,15 +404,13 @@ case n:
 	}
 	
 	case 0xD9: // MOV dp+Y,X
-		data = (uint8_t) (data + y);
-        /* fallthrough */
+		data = (uint8_t) (data + y);/*FALLTHRU*/
 	case 0xD8: // MOV dp,X
 		WRITE( 0, data + dp, x );
 		goto inc_pc_loop;
 	
 	case 0xDB: // MOV dp+X,Y
-		data = (uint8_t) (data + x);
-        /* fallthrough */
+		data = (uint8_t) (data + x);/*FALLTHRU*/
 	case 0xCB: // MOV dp,Y
 		WRITE( 0, data + dp, y );
 		goto inc_pc_loop;
@@ -492,15 +449,14 @@ case n:
 	
 	case 0xAF: // MOV (X)+,A
 		WRITE_DP( 0, x, a + no_read_before_write  );
-		x++;
+		x = (uint8_t) (x + 1);
 		goto loop;
 	
 // 5. 8-BIT LOGIC OPERATION COMMANDS
 	
 #define LOGICAL_OP( op, func )\
 	ADDR_MODES( op ) /* addr */\
-		data = READ( 0, data );\
-        /* fallthrough */ \
+		data = READ( 0, data );/*FALLTHRU*/\
 	case op: /* imm */\
 		nz = a func##= data;\
 		goto inc_pc_loop;\
@@ -511,13 +467,11 @@ case n:
 		goto addr_##op;\
 	case op + 0x01: /* dp,dp */\
 		data = READ_DP( -3, data );\
-        /* fallthrough */ \
 	case op + 0x10:{/*dp,imm*/\
-		uint8_t const* addr2 = pc + 1;\
+		uint16_t addr2 = pc + 1;\
 		pc += 2;\
 		addr = READ_PC( addr2 ) + dp;\
 	}\
-    /* fallthrough */ \
 	addr_##op:\
 		nz = data func READ( -1, addr );\
 		WRITE( 0, addr, nz );\
@@ -533,8 +487,7 @@ case n:
 // 4. 8-BIT ARITHMETIC OPERATION COMMANDS
 
 	ADDR_MODES( 0x68 ) // CMP addr
-		data = READ( 0, data );
-        /* fallthrough */
+		data = READ( 0, data );/*FALLTHRU*/
 	case 0x68: // CMP imm
 		nz = a - data;
 		c = ~nz;
@@ -549,8 +502,7 @@ case n:
 		goto loop;
 	
 	case 0x69: // CMP dp,dp
-		data = READ_DP( -3, data );
-        /* fallthrough */
+		data = READ_DP( -3, data );/*FALLTHRU*/
 	case 0x78: // CMP dp,imm
 		nz = READ_DP( -1, READ_PC( ++pc ) ) - data;
 		c = ~nz;
@@ -563,10 +515,8 @@ case n:
 	case 0x1E: // CMP X,abs
 		data = READ_PC16( pc );
 		pc++;
-        /* fallthrough */
 	cmp_x_addr:
-		data = READ( 0, data );
-        /* fallthrough */
+		data = READ( 0, data );/*FALLTHRU*/
 	case 0xC8: // CMP X,imm
 		nz = x - data;
 		c = ~nz;
@@ -579,10 +529,8 @@ case n:
 	case 0x5E: // CMP Y,abs
 		data = READ_PC16( pc );
 		pc++;
-        /* fallthrough */
 	cmp_y_addr:
-		data = READ( 0, data );
-        /* fallthrough */
+		data = READ( 0, data );/*FALLTHRU*/
 	case 0xAD: // CMP Y,imm
 		nz = y - data;
 		c = ~nz;
@@ -600,11 +548,9 @@ case n:
 	case 0xA9: // SBC dp,dp
 	case 0x89: // ADC dp,dp
 		data = READ_DP( -3, data );
-        /* fallthrough */
 	case 0xB8: // SBC dp,imm
 	case 0x98: // ADC dp,imm
 		addr = READ_PC( ++pc ) + dp;
-        /* fallthrough */
 	adc_addr:
 		nz = READ( -1, addr );
 		goto adc_data;
@@ -614,12 +560,10 @@ case n:
 #define CASE( n ) case n: case (n) + 0x20:
 	ADDR_MODES( 0x88 ) // ADC/SBC addr
 		data = READ( 0, data );
-        /* fallthrough */
 	case 0xA8: // SBC imm
 	case 0x88: // ADC imm
 		addr = -1; // A
 		nz = a;
-        /* fallthrough */
 	adc_data: {
 		int flags;
 		if ( opcode >= 0xA0 ) // SBC
@@ -652,23 +596,16 @@ case n:
 		goto loop;
 
 	case 0xBC: INC_DEC_REG( a, + 1 ) // INC A
-    /* fallthrough */
 	case 0x3D: INC_DEC_REG( x, + 1 ) // INC X
-    /* fallthrough */
 	case 0xFC: INC_DEC_REG( y, + 1 ) // INC Y
-    /* fallthrough */
 	
 	case 0x9C: INC_DEC_REG( a, - 1 ) // DEC A
-    /* fallthrough */
 	case 0x1D: INC_DEC_REG( x, - 1 ) // DEC X
-    /* fallthrough */
 	case 0xDC: INC_DEC_REG( y, - 1 ) // DEC Y
-    /* fallthrough */
 
 	case 0x9B: // DEC dp+X
 	case 0xBB: // INC dp+X
-		data = (uint8_t) (data + x);
-        /* fallthrough */
+		data = (uint8_t) (data + x); /* fallthrough */
 	case 0x8B: // DEC dp
 	case 0xAB: // INC dp
 		data += dp;
@@ -677,7 +614,6 @@ case n:
 	case 0xAC: // INC abs
 		data = READ_PC16( pc );
 		pc++;
-        /* fallthrough */
 	inc_abs:
 		nz = (opcode >> 4 & 2) - 1;
 		nz += READ( -1, data );
@@ -687,8 +623,7 @@ case n:
 // 7. SHIFT, ROTATION COMMANDS
 
 	case 0x5C: // LSR A
-		c = 0;
-        /* fallthrough */
+		c = 0; /*fallthrough*/
 	case 0x7C:{// ROR A
 		nz = (c >> 1 & 0x80) | (a >> 1);
 		c = a << 8;
@@ -697,8 +632,7 @@ case n:
 	}
 	
 	case 0x1C: // ASL A
-		c = 0;
-        /* fallthrough */
+		c = 0; /*fallthrough*/
 	case 0x3C:{// ROL A
 		int temp = c >> 8 & 1;
 		c = a << 1;
@@ -712,21 +646,17 @@ case n:
 		data += dp;
 		goto rol_mem;
 	case 0x1B: // ASL dp+X
-		c = 0;
-        /* fallthrough */
+		c = 0; /*fallthrough*/
 	case 0x3B: // ROL dp+X
-		data = (uint8_t) (data + x);
-        /* fallthrough */
+		data = (uint8_t) (data + x); /*fallthrough*/
 	case 0x2B: // ROL dp
 		data += dp;
 		goto rol_mem;
 	case 0x0C: // ASL abs
-		c = 0;
-        /* fallthrough */
+		c = 0; /*fallthrough*/
 	case 0x2C: // ROL abs
 		data = READ_PC16( pc );
 		pc++;
-        /* fallthrough */
 	rol_mem:
 		nz = c >> 8 & 1;
 		nz |= (c = READ( -1, data ) << 1);
@@ -738,21 +668,17 @@ case n:
 		data += dp;
 		goto ror_mem;
 	case 0x5B: // LSR dp+X
-		c = 0;
-        /* fallthrough */
+		c = 0; /*fallthrough*/
 	case 0x7B: // ROR dp+X
-		data = (uint8_t) (data + x);
-        /* fallthrough */
+		data = (uint8_t) (data + x); /*fallthrough*/
 	case 0x6B: // ROR dp
 		data += dp;
 		goto ror_mem;
 	case 0x4C: // LSR abs
-		c = 0;
-        /* fallthrough */
+		c = 0; /*fallthrough*/
 	case 0x6C: // ROR abs
 		data = READ_PC16( pc );
 		pc++;
-        /* fallthrough */
 	ror_mem: {
 		int temp = READ( -1, data );
 		nz = (c >> 1 & 0x80) | (temp >> 1);
@@ -846,7 +772,7 @@ case n:
 		unsigned temp = y * a;
 		a = (uint8_t) temp;
 		nz = ((temp >> 1) | temp) & 0x7F;
-		y = temp >> 8;
+		y = (uint8_t) (temp >> 8);
 		nz |= y;
 		goto loop;
 	}
@@ -876,6 +802,7 @@ case n:
 		
 		nz = (uint8_t) a;
 		a = (uint8_t) a;
+		y = (uint8_t) y;
 		
 		goto loop;
 	}
@@ -915,7 +842,7 @@ case n:
 // 12. BRANCHING COMMANDS
 
 	case 0x2F: // BRA rel
-		pc += (BOOST::int8_t) data;
+		pc += (int8_t) data;
 		goto inc_pc_loop;
 	
 	case 0x30: // BMI
@@ -967,7 +894,7 @@ case n:
 	
 	case 0xDE: // CBNE dp+X,rel
 		data = (uint8_t) (data + x);
-		// fallthrough
+		// fall through
 	case 0x2E:{// CBNE dp,rel
 		int temp;
 		// 61% from timer
@@ -987,7 +914,7 @@ case n:
 	
 	case 0x1F: // JMP [abs+X]
 		SET_PC( READ_PC16( pc ) + x );
-		// fallthrough
+		// fall through
 	case 0x5F: // JMP abs
 		SET_PC( READ_PC16( pc ) );
 		goto loop;
@@ -1039,10 +966,12 @@ case n:
 
 	{
 		int temp;
+		uint8_t l, h;
 	case 0x7F: // RET1
-		temp = *sp;
-		SET_PC( GET_LE16( sp + 1 ) );
-		sp += 3;
+		POP (temp);
+		POP (l);
+		POP (h);
+		SET_PC( l | (h << 8) );
 		goto set_psw;
 	case 0x8E: // POP PSW
 		POP( temp );
@@ -1217,16 +1146,13 @@ case n:
 	
 	case 0xFF:{// STOP
 		// handle PC wrap-around
-		unsigned addr = GET_PC() - 1;
-		if ( addr >= 0x10000 )
+		if ( pc == 0x0000 )
 		{
-			addr &= 0xFFFF;
-			SET_PC( addr );
-			dprintf( "SPC: PC wrapped around\n" );
+			debug_printf( "SPC: PC wrapped around\n" );
 			goto loop;
 		}
 	}
-	// fallthrough
+	// fall through
 	case 0xEF: // SLEEP
 		SUSPICIOUS_OPCODE( "STOP/SLEEP" );
 		--pc;
@@ -1236,14 +1162,12 @@ case n:
 	} // switch
 	
 	assert( 0 ); // catch any unhandled instructions
-}   
+}
 out_of_time:
-	rel_time -= m.cycle_table [*pc]; // undo partial execution of opcode
+	rel_time -= m.cycle_table [ ram [pc] ]; // undo partial execution of opcode
 stop:
 	
 	// Uncache registers
-	if ( GET_PC() >= 0x10000 )
-		dprintf( "SPC: PC wrapped around\n" );
 	m.cpu_regs.pc = (uint16_t) GET_PC();
 	m.cpu_regs.sp = ( uint8_t) GET_SP();
 	m.cpu_regs.a  = ( uint8_t) a;
