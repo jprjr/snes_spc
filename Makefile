@@ -1,7 +1,7 @@
 .PHONY: all clean install
 
-CFLAGS = -I. -O2 -fPIC -Wall -Wextra -Werror
-CXXFLAGS = -I. -O2 -fPIC -fno-exceptions -fno-rtti -Wall -Wextra -Werror
+CFLAGS = -I. -O2 -fPIC -Wall -Wextra
+CXXFLAGS = -I. -O2 -fPIC -fno-exceptions -fno-rtti -Wall -Wextra
 
 STATIC_PREFIX=lib
 DYNLIB_PREFIX=lib
