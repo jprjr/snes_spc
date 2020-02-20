@@ -1,7 +1,7 @@
 .PHONY: all clean install
 
-CFLAGS = -I. -O2 -fPIC -Wall -Wextra -DNDEBUG -DBLARGG_BUILD_DLL -DSPC_ISOLATED_ECHO_BUFFER
-CXXFLAGS = -I. -O2 -fPIC -fno-exceptions -fno-rtti -Wall -Wextra -std=c++11 -DNDEBUG -DBLARGG_BUILD_DLL -DSPC_ISOLATED_ECHO_BUFFER
+CFLAGS = -I. -O2 -fPIC -Wall -Wextra -Wno-implicit-fallthrough -DNDEBUG -DBLARGG_BUILD_DLL -DSPC_ISOLATED_ECHO_BUFFER
+CXXFLAGS = -I. -O2 -fPIC -fno-exceptions -Wno-implicit-fallthrough -fno-rtti -Wall -Wextra -std=c++11 -DNDEBUG -DBLARGG_BUILD_DLL -DSPC_ISOLATED_ECHO_BUFFER
 
 STATIC_PREFIX=lib
 DYNLIB_PREFIX=lib
